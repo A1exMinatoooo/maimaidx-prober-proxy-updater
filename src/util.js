@@ -3,22 +3,11 @@ import { fetch } from "node-fetch-cookies";
 import http from "node:http";
 import https from "node:https";
 
-async function fetchWithCookieWithRetry(cj, url, options) {
+async function fetchWithCookieWithRetry(cj, url, options, fetchTimeout) {
   for (let i = 0; i < config.fetchRetryCount; i++) {
-    // timeout
-    const contoller = new AbortController();
-    const timeout = setTimeout(() => {
-      console.log(`fetch canceled due to timeout`)
-      try {
-        contoller.abort();
-      }
-      catch(err) {
-        console.log("failed to cancel timeout fetch: ", err)
-      }
-    }, config.fetchTimeOut);
     try {
       const result = await fetch(cj, url, {
-        signal: contoller.signal,
+        signal: AbortSignal.timeout(fetchTimeout || config.fetchTimeOut),
         agent: function (_parsedURL) {
           if (_parsedURL.protocol == "http:") {
             return new http.Agent({ keepAlive: true });
@@ -28,10 +17,8 @@ async function fetchWithCookieWithRetry(cj, url, options) {
         },
         ...options,
       });
-      clearTimeout(timeout);
       return result;
     } catch (e) {
-      clearTimeout(timeout);
       console.log(`delay due to fetch failed with attempt ${url} #${i + 1}`);
       if (i === config.fetchRetryCount - 1) throw e;
 

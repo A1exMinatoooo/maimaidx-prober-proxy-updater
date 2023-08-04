@@ -1,44 +1,39 @@
 <template>
   <n-spin :show="loading">
     <n-card class="card" title="导入数据">
-      <n-tabs
-        default-value="maimai-dx"
-        size="large"
-        animated
-        @update:value="(value) => (updateType = value)"
-      >
-        <n-tab-pane
-          v-for="updateType in ['maimai-dx', 'chunithm']"
-          :key="updateType"
-          :name="updateType"
-          :tab="updateType"
-        >
+      <n-tabs default-value="maimai-dx" size="large" animated @update:value='(value) => {
+        updateType = value
+        value === "maimai-dx" ? formValue.diffList = ["Expert", "Master", "Re:Master"] : formValue.diffList = ["Expert", "Master", "Ultima", "WorldsEnd", "Recent"]
+      }'>
+        <n-tab-pane v-for="updateType in ['maimai-dx', 'chunithm']" :key="updateType" :name="updateType"
+          :tab="updateType">
           <n-space vertical>
-            <n-form
-              ref="formRef"
-              class="form"
-              :model="formValue"
-              :rules="rules"
-            >
+            <n-form ref="formRef" class="form" :model="formValue" :rules="rules">
               <n-form-item path="username" label="查分器账号">
-                <n-input
-                  v-model:value="formValue.username"
-                  placeholder="username"
-                />
+                <n-input v-model:value="formValue.username" placeholder="username" />
               </n-form-item>
               <n-form-item path="password" label="查分器密码">
-                <n-input
-                  v-model:value="formValue.password"
-                  type="password"
-                  show-password-on="click"
-                  placeholder="password"
-                />
+                <n-input v-model:value="formValue.password" type="password" show-password-on="click"
+                  placeholder="password" />
               </n-form-item>
-              <n-form-item path="allDiff" label="更新所有难度">
-                <n-switch v-model:value="formValue.allDiff">
-                  <template #checked>All difficulties</template>
-                  <template #unchecked> Expert,Master,Re:Master </template>
-                </n-switch>
+              <n-form-item path="diffList" label="更新难度">
+                <n-checkbox-group v-model:value="formValue.diffList">
+                  <!-- two different series of values for different type value-->
+                  <n-space vertical>
+                    <n-checkbox value="Basic">Basic</n-checkbox>
+                    <n-checkbox value="Advanced">Advanced</n-checkbox>
+                    <n-checkbox value="Expert">Expert</n-checkbox>
+                    <n-checkbox value="Master">Master</n-checkbox>
+                    <template v-if="updateType === 'maimai-dx'">
+                      <n-checkbox value="Re:Master">Re:Master</n-checkbox>
+                    </template>
+                    <template v-else>
+                      <n-checkbox value="Ultima">Ultima</n-checkbox>
+                      <n-checkbox value="WorldsEnd">WorldsEnd</n-checkbox>
+                      <n-checkbox value="Recent">最近游玩</n-checkbox>
+                    </template>
+                  </n-space>
+                </n-checkbox-group>
               </n-form-item>
               <n-form-item label="记住账号密码">
                 <n-switch v-model:value="remember" @change="rememberChange" />
@@ -64,23 +59,16 @@
       </template>
     </n-card>
 
-    <n-modal
-      v-model:show="showModal"
-      preset="card"
-      style="max-width: 1080px"
-      title="快速跳转链接"
-    >
+    <n-modal v-model:show="showModal" preset="card" style="max-width: 1080px" title="快速跳转链接">
       <n-p>
-        使用方法：将链接发送到微信任意聊天框中（推荐文件传输助手），<strong>代理配置正确后</strong>点击链接即可进行数据更新。<strong
-          >注意：短链接包含你的查分器账户和密码信息，请不要将链接分享给其他人！</strong
-        >
+        使用方法：将链接发送到微信任意聊天框中（推荐文件传输助手），<strong>代理配置正确后</strong>点击链接即可进行数据更新。<strong>注意：短链接包含你的查分器账户和密码信息，请不要将链接分享给其他人！</strong>
       </n-p>
       点击选中链接：
-      <n-tag type="info" @click="selectContent" @touchstart="selectContent">
+      <div type="info" @click="selectContent" @touchstart="selectContent" class="shortCut">
         <p id="short-cut" ref="shortCutRef">
           {{ shortCut }}
         </p>
-      </n-tag>
+      </div>
     </n-modal>
   </n-spin>
 </template>
@@ -99,6 +87,11 @@ const formRef = ref(null)
 const formValue = ref({
   username: '',
   password: '',
+  diffList: [
+    'Expert',
+    'Master',
+    'Re:Master',
+  ],
 })
 const remember = ref(false)
 const rules = ref({
@@ -109,6 +102,10 @@ const rules = ref({
   password: {
     required: true,
     message: '请输入查分器密码',
+  },
+  diffList: {
+    required: true,
+    message: '请选择更新难度',
   },
 })
 const shortCut = ref('')
@@ -164,7 +161,11 @@ async function genShortcut(type) {
   url += `callbackHost=${encodeURIComponent(callbackHost)}`
   url += `&username=${encodeURIComponent(formValue.value.username)}`
   url += `&password=${encodeURIComponent(formValue.value.password)}`
-  url += `&allDiff=${encodeURIComponent(formValue.value.allDiff !== undefined ? formValue.value.allDiff : false)}`
+  url += `&diffList=${encodeURIComponent(
+    formValue.value.diffList !== undefined
+      ? formValue.value.diffList.join()
+      : null
+  )}`
   url += `&type=${encodeURIComponent(type)}`
   console.log(url)
   shortCut.value = url
@@ -177,7 +178,9 @@ async function post(type, jump = true) {
       formValue.value.username,
       formValue.value.password,
       type,
-      formValue.value.allDiff !== undefined ? formValue.value.allDiff : false
+      formValue.value.diffList !== undefined
+        ? formValue.value.diffList.join()
+        : null
     )
     console.log(result.data)
     saveToLocalStorage()
@@ -224,5 +227,11 @@ function submit(type) {
 <style scoped>
 .form {
   margin-top: 6px;
+}
+
+.shortCut {
+  background-color: rgb(250, 250, 252);
+  color: rgb(24, 160, 88);
+  word-wrap: break-word;
 }
 </style>
